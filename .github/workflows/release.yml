@@ -1,0 +1,31 @@
+name: Publish Windows release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run dist
+      - name: Prepare stable download filename
+        shell: pwsh
+        run: |
+          $built = Get-ChildItem release -Filter 'Local Model Lab *.exe' | Select-Object -First 1
+          if (-not $built) { throw 'Portable release executable not found.' }
+          Copy-Item $built.FullName 'release/Local-Model-Lab-Windows-x64.exe'
+      - uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: release/Local-Model-Lab-Windows-x64.exe
