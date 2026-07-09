@@ -132,7 +132,7 @@ body {
   background: linear-gradient(90deg,
     transparent 0%,
     rgba(255, 255, 255, 0.20) 30%,
-    rgba(129, 140, 248, 0.20) 70%,
+    rgba(255, 255, 255, 0.10) 70%,
     transparent 100%
   );
 }
@@ -153,9 +153,9 @@ body {
 }
 
 .titlebar-logo {
-  width: 18px;
-  height: 18px;
-  stroke: var(--accent);
+  width: 30px;
+  height: 24px;
+  object-fit: contain;
   filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.5));
 }
 
@@ -408,7 +408,7 @@ input[type="range"]:focus::-webkit-slider-thumb {
   transform: translateY(-2px);
   box-shadow:
     0 8px 28px rgba(255, 255, 255, 0.35),
-    0 2px 8px rgba(129, 140, 248, 0.25);
+    0 2px 8px rgba(255, 255, 255, 0.18);
   filter: brightness(1.08);
 }
 

@@ -1,82 +1,39 @@
 # Local Model Lab
 
-Local Model Lab is a Windows desktop workspace for private, local AI chat and image generation. Text inference runs through the bundled llama.cpp runtime. Image generation uses stable-diffusion.cpp or a compatible local API backend.
+**Run AI locally.**
 
-## Highlights
+Local Model Lab is a private Windows AI workspace for local chat, image creation, and model management. Your prompts and generated content stay on your computer during local inference.
 
-- Offline multi-turn chat with local GGUF models and exportable conversations.
-- Local image generation controls for size, seed, scheduler, CFG, steps, batch, GPU, CPU threads, VAE, and safety.
-- Searchable model library with hardware fit, source, license, install, resume, cancel, delete, and import controls.
-- Live model preflight checks before download.
-- Download hardening: trusted HTTPS hosts, redirect validation, response-type checks, expected-size validation, and partial-file resume.
-- Local policy guard and in-app Privacy, Terms, Acceptable Use, and Model License pages.
-- No account, analytics, ads, telemetry, or Local Model Lab cloud inference.
-- Static product website ready for GitHub Pages.
+## What You Can Do
 
-## Run the desktop app
+- Chat with supported local GGUF language models.
+- Create images with compatible local Stable Diffusion and FLUX backends.
+- Search, compare, download, import, and remove models.
+- Check model size, hardware fit, source, and license before downloading.
+- Tune generation, CPU, GPU, safety, and model parameters.
+- Export conversations and access generated files directly.
 
-```powershell
-npm.cmd install
-npm.cmd run electron-start
-```
+## Privacy
 
-PowerShell environments with script execution disabled should use `npm.cmd` instead of `npm`.
+Local Model Lab does not require an account and does not include advertising, analytics, telemetry, or hosted Local Model Lab inference. Internet access is used only when you choose to download models, backends, or updates from their listed providers.
 
-## Build
+## Windows Requirements
 
-```powershell
-npm.cmd run build
-npm.cmd run electron-build
-npm.cmd run dist
-```
+- Windows 10 or Windows 11, 64-bit
+- 8 GB RAM recommended minimum
+- A compatible GPU is optional for lightweight text models and recommended for image generation
+- Free storage appropriate for the models you select
 
-`npm.cmd run dist` creates a portable Windows executable in `release`. Use `npm.cmd run dist:dir` for an unpacked development build.
+## Download
 
-## Website
+Official Windows releases are published from the Local Model Lab repository. Verify the provided SHA256 checksum before running a downloaded build.
 
-The static website is in `website` and can be opened directly or served locally:
+## Policies
 
-```powershell
-npm.cmd run site:dev
-```
+- [Privacy Policy](website/privacy.html)
+- [Terms of Use](website/terms.html)
+- [Acceptable Use Policy](website/acceptable-use.html)
+- [Model and Software Licenses](website/licenses.html)
+- [Security](SECURITY.md)
 
-GitHub Pages deployment is configured in `.github/workflows/pages.yml`. After pushing to a repository, enable **Settings > Pages > Source: GitHub Actions**.
-
-## Model link audit
-
-```powershell
-npm.cmd run verify:links
-```
-
-The audit checks every model and backend download URL and exits non-zero on HTTP failures. A weekly GitHub Actions audit is included. The desktop app also verifies the selected source immediately before each download.
-
-## Local data
-
-- Models: `%APPDATA%\Local Model Lab\LocalAI_Models`
-- Generated images: `%APPDATA%\Local Model Lab\LML_Generations`
-- Partial downloads: stored beside the target model with a `.tmp` suffix and resumed on retry
-
-Prompts and outputs are not sent to an Local Model Lab-operated server. Model downloads connect to Hugging Face; optional backend downloads connect to GitHub.
-
-## Image backends
-
-Local Model Lab can use:
-
-- stable-diffusion.cpp installed by the app or placed in the packaged `bin` directory
-- A1111 or Forge running locally with API access
-- Compatible loopback workflows exposed by supported local tools
-
-No placeholder image is shown when a backend is missing.
-
-## Policies and third-party content
-
-See the in-app Policy & Legal section and:
-
-- `website/privacy.html`
-- `website/terms.html`
-- `website/acceptable-use.html`
-- `website/licenses.html`
-- `THIRD_PARTY_NOTICES.md`
-- `SECURITY.md`
-
-Model weights are independently published and remain governed by their upstream licenses. A catalog listing is not an endorsement or a grant of rights.
+Third-party models and runtimes remain governed by their respective licenses and terms.

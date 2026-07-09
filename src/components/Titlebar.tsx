@@ -1,11 +1,11 @@
-import { Cpu, Minus, Square, X } from 'lucide-react';
+import { Minus, Square, X } from 'lucide-react';
 import { minimizeWindow, maximizeWindow, closeWindow, isElectron } from '../ipc';
 
 export default function Titlebar() {
   return (
     <div className="custom-titlebar">
       <div className="titlebar-brand">
-        <Cpu className="titlebar-logo" />
+        <img className="titlebar-logo" src="/logo.png" alt="" aria-hidden="true" />
         <span>LOCAL MODEL LAB</span>
       </div>
       <div className="titlebar-actions">

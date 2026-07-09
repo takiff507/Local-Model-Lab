@@ -117,6 +117,7 @@ function createWindow() {
     minHeight: 700,
     frame: false,
     titleBarStyle: 'hidden',
+    icon: path.join(__dirname, 'build', 'icon.ico'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
       nodeIntegration: false,

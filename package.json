@@ -16,7 +16,8 @@
                     "preview":  "vite preview",
                     "site:dev":  "vite website --host 127.0.0.1",
                     "verify:links":  "node scripts/verify-model-links.mjs",
-                    "dist:dir":  "npm run build \u0026\u0026 npm run electron-build \u0026\u0026 electron-builder --dir"
+                    "dist:dir":  "npm run build \u0026\u0026 npm run electron-build \u0026\u0026 electron-builder --dir",
+                    "brand:assets":  "node scripts/generate-brand-assets.mjs"
                 },
     "dependencies":  {
                          "axios":  "^1.18.1",
@@ -33,6 +34,8 @@
                             "electron":  "^43.0.0",
                             "electron-builder":  "^26.15.3",
                             "oxlint":  "^1.71.0",
+                            "png-to-ico":  "^3.0.2",
+                            "sharp":  "^0.35.3",
                             "typescript":  "~6.0.2",
                             "vite":  "^8.1.1"
                         },
@@ -46,6 +49,7 @@
                                 "dist/**/*",
                                 "electron-main.js",
                                 "preload.cjs",
+                                "build/icon.ico",
                                 "package.json"
                             ],
                   "extraResources":  [
@@ -58,7 +62,8 @@
                                          }
                                      ],
                   "win":  {
-                              "target":  "portable"
+                              "target":  "portable",
+                              "icon":  "build/icon.ico"
                           }
               }
 }
