@@ -2,7 +2,7 @@
     "name":  "local-model-lab",
     "private":  true,
     "version":  "1.0.0",
-    "description":  "Local Model Lab - local-only desktop AI workspace for offline chat and image generation backends.",
+    "description":  "Private Windows workspace for local AI chat, image creation, and model management.",
     "author":  "Local Model Lab",
     "type":  "module",
     "main":  "electron-main.js",
@@ -17,7 +17,8 @@
                     "site:dev":  "vite website --host 127.0.0.1",
                     "verify:links":  "node scripts/verify-model-links.mjs",
                     "dist:dir":  "npm run build \u0026\u0026 npm run electron-build \u0026\u0026 electron-builder --dir",
-                    "brand:assets":  "node scripts/generate-brand-assets.mjs"
+                    "brand:assets":  "node scripts/generate-brand-assets.mjs",
+                    "dist:store":  "npm run build \u0026\u0026 npm run electron-build \u0026\u0026 electron-builder --win appx --x64"
                 },
     "dependencies":  {
                          "axios":  "^1.18.1",
@@ -64,6 +65,20 @@
                   "win":  {
                               "target":  "portable",
                               "icon":  "build/icon.ico"
-                          }
+                          },
+                  "appx":  {
+                               "identityName":  "KSNXRL.LocalModelLab",
+                               "publisher":  "CN=0A5B98A2-EA99-4CC5-A2E5-C3EAAE2678B6",
+                               "publisherDisplayName":  "KSNXRL",
+                               "applicationId":  "LocalModelLab",
+                               "displayName":  "Local Model Lab",
+                               "backgroundColor":  "#07080A",
+                               "languages":  [
+                                                 "en-US"
+                                             ],
+                               "showNameOnTiles":  false,
+                               "setBuildNumber":  false,
+                               "artifactName":  "Local-Model-Lab-Store-${version}-${arch}.${ext}"
+                           }
               }
 }

@@ -10,7 +10,7 @@ interface SidebarProps {
 export default function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
   const [cpuUsage, setCpuUsage] = useState(0);
   const [ramUsage, setRamUsage] = useState(0);
-  const [gpuUsage, setGpuUsage] = useState(0);
+  const [gpuUsage, setGpuUsage] = useState<number | null>(null);
 
   useEffect(() => {
     // Initial fetch
@@ -56,18 +56,18 @@ export default function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
     }}>
       {/* Navigation Links */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-        <div style={{ 
-          fontSize: '0.7rem', 
-          color: 'rgba(255, 255, 255, 0.4)', 
-          fontWeight: 700, 
-          letterSpacing: '2px', 
+        <div style={{
+          fontSize: '0.7rem',
+          color: 'rgba(255, 255, 255, 0.4)',
+          fontWeight: 700,
+          letterSpacing: '2px',
           textTransform: 'uppercase',
           paddingLeft: '12px',
           marginBottom: '16px'
         }}>
           Workspace
         </div>
-        
+
         {navItems.map(item => {
           const Icon = item.icon;
           const isActive = activeTab === item.id;
@@ -82,11 +82,11 @@ export default function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
                 width: '100%',
                 padding: '11px 16px',
                 position: 'relative',
-                background: isActive 
-                  ? 'rgba(255, 255, 255, 0.08)' 
+                background: isActive
+                  ? 'rgba(255, 255, 255, 0.08)'
                   : 'transparent',
-                border: isActive 
-                  ? '1px solid rgba(255, 255, 255, 0.12)' 
+                border: isActive
+                  ? '1px solid rgba(255, 255, 255, 0.12)'
                   : '1px solid transparent',
                 borderRadius: '10px',
                 color: isActive ? '#ffffff' : 'rgba(255, 255, 255, 0.65)',
@@ -126,7 +126,7 @@ export default function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
                   boxShadow: '0 0 12px rgba(255, 255, 255, 0.6), 0 0 4px rgba(255, 255, 255, 0.3)',
                 }} />
               )}
-              <Icon size={18} style={{ 
+              <Icon size={18} style={{
                 strokeWidth: isActive ? 2.2 : 1.8,
                 filter: isActive ? 'drop-shadow(0 0 6px rgba(255, 255, 255, 0.3))' : 'none',
               }} />
@@ -159,9 +159,9 @@ export default function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
             <span style={{ color: cpuUsage > 75 ? '#ff5f56' : 'rgba(255, 255, 255, 0.8)', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{cpuUsage}%</span>
           </div>
           <div style={{ height: '3px', background: 'rgba(255, 255, 255, 0.05)', borderRadius: '2px', overflow: 'hidden' }}>
-            <div style={{ 
-              width: `${cpuUsage}%`, 
-              height: '100%', 
+            <div style={{
+              width: `${cpuUsage}%`,
+              height: '100%',
               background: cpuUsage > 75 ? 'linear-gradient(90deg, #ff5f56, #ffbd2e)' : 'linear-gradient(90deg, #ffffff, rgba(255, 255, 255, 0.5))',
               borderRadius: '2px',
               transition: 'width 0.8s cubic-bezier(0.4, 0, 0.2, 1)',
@@ -174,16 +174,16 @@ export default function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
         <div>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', color: 'rgba(255, 255, 255, 0.5)', marginBottom: '5px' }}>
             <span>GPU Load</span>
-            <span style={{ color: gpuUsage > 75 ? '#ff5f56' : 'rgba(255, 255, 255, 0.8)', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{gpuUsage}%</span>
+            <span style={{ color: (gpuUsage ?? 0) > 75 ? '#ff5f56' : 'rgba(255, 255, 255, 0.8)', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{gpuUsage === null ? 'N/A' : gpuUsage + '%'}</span>
           </div>
           <div style={{ height: '3px', background: 'rgba(255, 255, 255, 0.05)', borderRadius: '2px', overflow: 'hidden' }}>
-            <div style={{ 
-              width: `${gpuUsage}%`, 
-              height: '100%', 
-              background: gpuUsage > 75 ? 'linear-gradient(90deg, #ff5f56, #ffbd2e)' : 'linear-gradient(90deg, #ffffff, rgba(255, 255, 255, 0.5))',
+            <div style={{
+              width: `${gpuUsage ?? 0}%`,
+              height: '100%',
+              background: (gpuUsage ?? 0) > 75 ? 'linear-gradient(90deg, #ff5f56, #ffbd2e)' : 'linear-gradient(90deg, #ffffff, rgba(255, 255, 255, 0.5))',
               borderRadius: '2px',
               transition: 'width 0.8s cubic-bezier(0.4, 0, 0.2, 1)',
-              boxShadow: gpuUsage > 75 ? '0 0 8px rgba(255, 95, 86, 0.4)' : '0 0 8px rgba(255, 255, 255, 0.2)',
+              boxShadow: (gpuUsage ?? 0) > 75 ? '0 0 8px rgba(255, 95, 86, 0.4)' : '0 0 8px rgba(255, 255, 255, 0.2)',
             }}></div>
           </div>
         </div>
@@ -195,9 +195,9 @@ export default function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
             <span style={{ color: 'rgba(255, 255, 255, 0.8)', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{ramUsage}%</span>
           </div>
           <div style={{ height: '3px', background: 'rgba(255, 255, 255, 0.05)', borderRadius: '2px', overflow: 'hidden' }}>
-            <div style={{ 
-              width: `${ramUsage}%`, 
-              height: '100%', 
+            <div style={{
+              width: `${ramUsage}%`,
+              height: '100%',
               background: 'linear-gradient(90deg, rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0.2))',
               borderRadius: '2px',
               transition: 'width 0.8s cubic-bezier(0.4, 0, 0.2, 1)',

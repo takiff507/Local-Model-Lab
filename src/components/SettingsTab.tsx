@@ -1,11 +1,9 @@
 import { useEffect, useState } from 'react';
-import { Cpu, FolderOpen, HardDrive, Image, Power, ShieldCheck, ShieldOff, Terminal, Trash2 } from 'lucide-react';
+import { Cpu, FolderOpen, HardDrive, Image, ShieldCheck, ShieldOff, Terminal, Trash2 } from 'lucide-react';
 import {
-  getStartOnBoot,
   onEngineLog,
   openGenerationsFolder,
   openModelsFolder,
-  setStartOnBoot,
 } from '../ipc';
 
 interface SettingsTabProps {
@@ -20,25 +18,12 @@ export default function SettingsTab({ systemInfo, safetyEnabled, setSafetyEnable
     '[system] Local inference mode enabled.',
     '[system] Waiting for model or backend activity.',
   ]);
-  const [startOnBoot, setStartOnBootState] = useState(false);
-  const [bootSupported, setBootSupported] = useState(false);
-  const [settingsMessage, setSettingsMessage] = useState('');
 
   useEffect(() => {
-    getStartOnBoot().then(result => {
-      setStartOnBootState(result.enabled);
-      setBootSupported(result.supported);
-    });
     return onEngineLog(entry => {
       setLogs(current => [...current.slice(-79), `[${new Date().toLocaleTimeString()}] ${entry.text}`]);
     });
   }, []);
-
-  const updateStartOnBoot = async (enabled: boolean) => {
-    const result = await setStartOnBoot(enabled);
-    setStartOnBootState(result.enabled);
-    setSettingsMessage(result.success ? 'Startup preference updated.' : result.message || 'Could not update startup preference.');
-  };
 
   return (
     <main className="settings-page">
@@ -47,7 +32,7 @@ export default function SettingsTab({ systemInfo, safetyEnabled, setSafetyEnable
           <Cpu size={24} />
           <div>
             <h2>System & Settings</h2>
-            <p>Hardware detection, local storage, safeguards, startup behavior, and engine logs.</p>
+            <p>Hardware detection, local storage, safeguards, and engine logs.</p>
           </div>
         </div>
       </header>
@@ -71,11 +56,7 @@ export default function SettingsTab({ systemInfo, safetyEnabled, setSafetyEnable
             <span><strong>{safetyEnabled ? <ShieldCheck size={15} /> : <ShieldOff size={15} />}18+ safety lock</strong><small>Local prompt guard. Hard safety blocks remain active.</small></span>
             <input type="checkbox" checked={safetyEnabled} onChange={event => setSafetyEnabled(event.target.checked)} />
           </label>
-          <label className={`setting-toggle ${!bootSupported ? 'is-disabled' : ''}`}>
-            <span><strong><Power size={15} />Start with Windows</strong><small>{bootSupported ? 'Launch Local Model Lab after sign-in.' : 'Available in the packaged Windows release.'}</small></span>
-            <input type="checkbox" checked={startOnBoot} disabled={!bootSupported} onChange={event => updateStartOnBoot(event.target.checked)} />
-          </label>
-          {settingsMessage && <p className="settings-message">{settingsMessage}</p>}
+
         </section>
 
         <section className="settings-section">

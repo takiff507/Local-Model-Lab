@@ -29,7 +29,7 @@ export interface ImageGenerationRequest {
   seed: number;
   scheduler: string;
   clipSkip: number;
-  vae: string;
+  vae?: string;
   safetyEnabled: boolean;
   gpuEnabled?: boolean;
   selectedGpuIndex?: number;
@@ -164,7 +164,7 @@ export const deleteModel = async (filename: string): Promise<{ success: boolean;
   if (ipc) {
     return await ipc.invoke('delete-model', { filename });
   }
-  return { success: true };
+  return { success: false, message: 'Model deletion is available in the desktop app.' };
 };
 
 export const startTextEngine = async (modelPath: string, systemPrompt?: string): Promise<{ success: boolean; message?: string }> => {
@@ -180,7 +180,7 @@ export const stopTextEngine = async (): Promise<{ success: boolean; message?: st
   if (ipc) {
     return await ipc.invoke('stop-text-engine');
   }
-  return { success: true };
+  return { success: false, message: 'Text engine runs only inside Electron.' };
 };
 
 export const chatCompletion = async (
@@ -305,14 +305,10 @@ export const closeWindow = () => {
   if (ipc) ipc.send('window-close');
 };
 
-export const getSystemStatus = async (): Promise<{ cpuUsage: number; ramUsage: number; gpuUsage: number }> => {
+export const getSystemStatus = async (): Promise<{ cpuUsage: number; ramUsage: number; gpuUsage: number | null }> => {
   const ipc = bridge();
   if (ipc) {
     return await ipc.invoke('get-system-status');
   }
-  return {
-    cpuUsage: Math.floor(Math.random() * 20) + 10,
-    ramUsage: 45,
-    gpuUsage: Math.floor(Math.random() * 15) + 5,
-  };
+  return { cpuUsage: 0, ramUsage: 0, gpuUsage: null };
 };

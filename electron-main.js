@@ -1012,7 +1012,7 @@ function getGPUUsage() {
                         return resolve(val);
                     }
                 }
-                resolve(activeSession ? 65 : 0);
+                resolve(Number.NaN);
             });
         });
     });
@@ -1048,11 +1048,12 @@ ipcMain.handle('get-system-status', async () => {
         const totalMem = os.totalmem();
         const freeMem = os.freemem();
         const ramUsage = Math.round(((totalMem - freeMem) / totalMem) * 100);
-        const gpuUsage = await getGPUUsage();
+        const rawGpuUsage = await getGPUUsage();
+        const gpuUsage = Number.isFinite(rawGpuUsage) ? rawGpuUsage : null;
         return { cpuUsage, ramUsage, gpuUsage };
     }
     catch (error) {
         console.error('System status query error:', error);
-        return { cpuUsage: 0, ramUsage: 0, gpuUsage: 0 };
+        return { cpuUsage: 0, ramUsage: 0, gpuUsage: null };
     }
 });

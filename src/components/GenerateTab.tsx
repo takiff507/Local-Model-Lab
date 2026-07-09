@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Sliders, RefreshCw, Download, Trash2, Image as ImageIcon, Play, Sparkles, Layers, Cpu, ShieldCheck, ShieldOff, RotateCw, AlertTriangle, ChevronDown, ChevronUp } from 'lucide-react';
-import { getImageBackendStatus, onImageGenerationProgress, startImageGeneration, downloadImageBackend, cancelImageBackendDownload, onImageBackendDownloadProgress, getSystemInfo, isElectron } from '../ipc';
+import { Sliders, RefreshCw, FolderOpen, Trash2, Image as ImageIcon, Play, Sparkles, Layers, Cpu, ShieldCheck, ShieldOff, RotateCw, AlertTriangle, ChevronDown, ChevronUp } from 'lucide-react';
+import { getImageBackendStatus, onImageGenerationProgress, startImageGeneration, downloadImageBackend, cancelImageBackendDownload, onImageBackendDownloadProgress, getSystemInfo, openGenerationsFolder } from '../ipc';
 import type { ImageBackendStatus } from '../ipc';
 import { buildInstalledModelCatalog } from '../modelsData';
 import { checkPromptSafety } from '../safety';
@@ -54,7 +54,6 @@ export default function GenerateTab({
   safetyEnabled,
   setSafetyEnabled,
 }: GenerateTabProps) {
-  const previewGeneration = !isElectron() && new URLSearchParams(window.location.search).get('previewGeneration') === '1';
   const [prompt, setPrompt] = useState('A cinematic neon city street at night, detailed reflections, dramatic lighting, ultra sharp');
   const [negativePrompt, setNegativePrompt] = useState('ugly, blurry, low resolution, disfigured, text, watermark');
   const [steps, setSteps] = useState(8);
@@ -63,19 +62,17 @@ export default function GenerateTab({
   const [aspect, setAspect] = useState('1:1');
   const [scheduler, setScheduler] = useState('euler_a');
   const [clipSkip, setClipSkip] = useState(2);
-  const [vae, setVae] = useState('builtin');
   const [width, setWidth] = useState(512);
   const [height, setHeight] = useState(512);
-  const [isGenerating, setIsGenerating] = useState(previewGeneration);
-  const [progress, setProgress] = useState(previewGeneration ? 58 : 0);
-  const [progressText, setProgressText] = useState(previewGeneration ? 'Rendering image details...' : '');
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [progressText, setProgressText] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [gpuEnabled, setGpuEnabled] = useState(true);
   const [selectedGpuIndex, setSelectedGpuIndex] = useState(0);
   const [limitCpuThreads, setLimitCpuThreads] = useState(false);
   const [cpuThreads, setCpuThreads] = useState(4);
   const [vaeTiling, setVaeTiling] = useState(true);
-  const [batchCount, setBatchCount] = useState(1);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [systemInfo, setSystemInfo] = useState<any>(null);
 
@@ -263,14 +260,12 @@ export default function GenerateTab({
         seed: finalSeed,
         scheduler,
         clipSkip,
-        vae,
         safetyEnabled,
         gpuEnabled,
         selectedGpuIndex,
         limitCpuThreads,
         cpuThreads,
         vaeTiling,
-        batchCount,
       });
 
       if (!result.success || !result.imageUrl) {
@@ -398,19 +393,6 @@ export default function GenerateTab({
           />
         </div>
 
-        <div style={{ position: 'relative', zIndex: 8 }}>
-          <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '8px', fontWeight: 600 }}>VAE Model</label>
-          <CustomDropdown
-            value={vae}
-            onChange={(val) => setVae(val)}
-            options={[
-              { value: 'builtin', label: 'Built-in / Backend Default' },
-              { value: 'sd_vae_mse', label: 'sd-vae-ft-mse (if backend has it)' },
-              { value: 'anime_vae', label: 'Anime VAE (if backend has it)' },
-            ]}
-          />
-        </div>
-
         <div style={{ position: 'relative', zIndex: 7 }}>
           <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '8px', fontWeight: 600 }}>Aspect Ratio</label>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '6px' }}>
@@ -469,7 +451,7 @@ export default function GenerateTab({
 
         <div style={{ position: 'relative', zIndex: 2 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '8px' }}>
-            <span>Clip Skip</span>
+            <span>Clip Skip (A1111 / Forge)</span>
             <span>{clipSkip}</span>
           </div>
           <input type="range" min="1" max="4" step="1" value={clipSkip} onChange={(e) => setClipSkip(parseInt(e.target.value))} style={{ width: '100%' }} />
@@ -541,9 +523,6 @@ export default function GenerateTab({
                       { value: '2', label: 'GPU 2' },
                     ]}
                   />
-                  <p style={{ fontSize: '0.62rem', color: 'var(--text-muted)', margin: 0 }}>
-                    *g-series CPU/APUs: Use Index 1 to run on integrated graphics.
-                  </p>
                 </div>
               )}
             </div>
@@ -599,30 +578,6 @@ export default function GenerateTab({
                 <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)' }}>Prevents out-of-device memory crashes.</span>
               </div>
               <input type="checkbox" checked={vaeTiling} onChange={(e) => setVaeTiling(e.target.checked)} />
-            </div>
-
-            {/* Batch Count Slider */}
-            <div style={{
-              background: 'rgba(255, 255, 255, 0.02)',
-              border: '1px solid var(--border-light)',
-              borderRadius: '8px',
-              padding: '12px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '8px'
-            }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
-                <span>Batch Count</span>
-                <span>{batchCount} image{batchCount > 1 ? 's' : ''}</span>
-              </div>
-              <input 
-                type="range" 
-                min="1" 
-                max="4" 
-                value={batchCount} 
-                onChange={(e) => setBatchCount(parseInt(e.target.value))} 
-                style={{ width: '100%' }} 
-              />
             </div>
           </div>
         )}
@@ -697,10 +652,10 @@ export default function GenerateTab({
                 }}
               />
               <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                <a href={selectedItem.url} download={`generation_${selectedItem.id}.png`} target="_blank" rel="noreferrer" className="btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', padding: '6px 12px' }}>
-                  <Download size={14} />
-                  <span>Download</span>
-                </a>
+                <button onClick={openGenerationsFolder} className="btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', padding: '6px 12px' }}>
+                  <FolderOpen size={14} />
+                  <span>Open folder</span>
+                </button>
                 <button
                   onClick={() => {
                     const newHistory = history.filter(item => item.id !== selectedItem.id);
@@ -711,7 +666,7 @@ export default function GenerateTab({
                   style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', padding: '6px 12px', borderColor: 'rgba(255,95,86,0.3)', color: '#ff5f56' }}
                 >
                   <Trash2 size={14} />
-                  <span>Delete</span>
+                  <span>Remove from history</span>
                 </button>
                 {selectedItem.backend && (
                   <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
@@ -732,7 +687,7 @@ export default function GenerateTab({
                 <span style={{ color: '#ff5f56', fontWeight: 600 }}>No Image Model Installed</span>
                 <span style={{ fontSize: '0.85rem' }}>Download or import a local .safetensors, .ckpt, or image GGUF model first.</span>
                 <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '8px' }}>
-                  Tip: Downloading an image model from the **Model Library** will automatically set up the engine too.
+                  Downloading an image model from Model Library also offers engine setup.
                 </span>
               </div>
             </div>
@@ -812,7 +767,7 @@ export default function GenerateTab({
                   </button>
 
                   <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '8px' }}>
-                    Tip: Downloading an image model from the **Model Library** will automatically set up the engine too.
+                    Downloading an image model from Model Library also offers engine setup.
                   </div>
                 </div>
               )}

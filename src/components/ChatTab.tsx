@@ -31,7 +31,7 @@ export default function ChatTab({
   const [messages, setMessages] = useState<Message[]>([
     {
       sender: 'ai',
-      text: 'Hello! I am your completely offline AI Assistant. I run 100% locally on your machine. How can I help you today?',
+      text: 'Choose an installed model, launch it, and start a private local conversation.',
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     },
   ]);
