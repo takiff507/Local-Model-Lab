@@ -1,18 +1,19 @@
 import { useEffect, useState } from 'react';
-import { Cpu, FolderOpen, HardDrive, Image, ShieldCheck, ShieldOff, Terminal, Trash2 } from 'lucide-react';
+import { Cpu, Flag, FolderOpen, HardDrive, Image, ShieldCheck, Terminal, Trash2 } from 'lucide-react';
 import {
   onEngineLog,
+  openExternal,
   openGenerationsFolder,
   openModelsFolder,
 } from '../ipc';
 
 interface SettingsTabProps {
   systemInfo: any;
-  safetyEnabled: boolean;
-  setSafetyEnabled: (enabled: boolean) => void;
 }
 
-export default function SettingsTab({ systemInfo, safetyEnabled, setSafetyEnabled }: SettingsTabProps) {
+const SAFETY_REPORT_URL = 'https://github.com/takiff507/Local-Model-Lab/issues/new?title=Safety%20report%3A%20offensive%20output';
+
+export default function SettingsTab({ systemInfo }: SettingsTabProps) {
   const [logs, setLogs] = useState<string[]>([
     '[system] Local Model Lab ready.',
     '[system] Local inference mode enabled.',
@@ -52,11 +53,14 @@ export default function SettingsTab({ systemInfo, safetyEnabled, setSafetyEnable
 
         <section className="settings-section">
           <h3><ShieldCheck size={17} />Safeguards</h3>
-          <label className="setting-toggle">
-            <span><strong>{safetyEnabled ? <ShieldCheck size={15} /> : <ShieldOff size={15} />}18+ safety lock</strong><small>Local prompt guard. Hard safety blocks remain active.</small></span>
-            <input type="checkbox" checked={safetyEnabled} onChange={event => setSafetyEnabled(event.target.checked)} />
-          </label>
-
+          <div className="setting-toggle">
+            <span><strong><ShieldCheck size={15} />Safety Lock</strong><small>Always on in the Store release. Blocks explicit and prohibited prompts.</small></span>
+            <span style={{ color: '#27c93f', fontSize: '0.68rem', fontWeight: 700 }}>Enabled</span>
+          </div>
+          <button className="btn-secondary settings-action" onClick={() => openExternal(SAFETY_REPORT_URL)}>
+            <Flag size={16} /><span>Report unsafe output</span>
+          </button>
+          <p className="settings-note">The report opens a public GitHub issue. Do not include private prompts, generated content, personal data, or local file paths.</p>
         </section>
 
         <section className="settings-section">

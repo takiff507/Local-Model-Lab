@@ -1,7 +1,7 @@
 {
     "name":  "local-model-lab",
     "private":  true,
-    "version":  "1.0.0",
+    "version":  "1.0.1",
     "description":  "Private Windows workspace for local AI chat, image creation, and model management.",
     "author":  "Local Model Lab",
     "type":  "module",

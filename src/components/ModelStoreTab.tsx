@@ -11,6 +11,7 @@ import {
   Info,
   RefreshCw,
   Search,
+  ShieldCheck,
   Trash2,
   Upload,
   XCircle,
@@ -59,6 +60,7 @@ export default function ModelStoreTab({
   const [sort, setSort] = useState<CatalogSort>('recommended');
   const [availability, setAvailability] = useState<Record<string, Availability>>({});
   const [isChecking, setIsChecking] = useState(false);
+  const [pendingDownload, setPendingDownload] = useState<Model | null>(null);
 
   const knownFilenames = useMemo(
     () => new Set(RECOMMENDED_MODELS.map(model => model.filename.toLowerCase())),
@@ -120,6 +122,15 @@ export default function ModelStoreTab({
     setIsChecking(false);
   };
 
+  const confirmDownload = () => {
+    if (!pendingDownload) return;
+    const model = pendingDownload;
+    setPendingDownload(null);
+    handleStartDownload(model);
+  };
+
+  const pendingLegal = pendingDownload ? getModelLegalInfo(pendingDownload) : null;
+
   const formatSpeed = (bytesPerSecond: number) => {
     if (!bytesPerSecond) return '0 B/s';
     const units = ['B/s', 'KB/s', 'MB/s', 'GB/s'];
@@ -162,11 +173,17 @@ export default function ModelStoreTab({
           <p className="model-row__compatibility" style={{ color: compatibility.color }}>{compatibility.detail}</p>
 
           <div className="model-row__legal">
-            <span>{legal.license}</span>
-            {!isCustom && (
-              <button type="button" onClick={() => openExternal(legal.sourceUrl)} title="Open model source">
-                {legal.repository}<ExternalLink size={12} />
-              </button>
+            {isCustom ? (
+              <span>{legal.license}</span>
+            ) : (
+              <>
+                <button type="button" onClick={() => openExternal(legal.licenseUrl)} title="Open model license terms">
+                  {legal.license}<ExternalLink size={12} />
+                </button>
+                <button type="button" onClick={() => openExternal(legal.sourceUrl)} title="Open model source">
+                  {legal.repository}<ExternalLink size={12} />
+                </button>
+              </>
             )}
           </div>
 
@@ -198,7 +215,7 @@ export default function ModelStoreTab({
               <XCircle size={16} /><span>Cancel</span>
             </button>
           ) : (
-            <button className="btn-accent" onClick={() => handleStartDownload(model)}>
+            <button className="btn-accent" onClick={() => setPendingDownload(model)}>
               <Download size={16} /><span>{download.status === 'error' ? 'Retry' : 'Download'}</span>
             </button>
           )}
@@ -267,6 +284,46 @@ export default function ModelStoreTab({
           <div className="section-label"><HardDrive size={18} /><h3>Imported local files</h3></div>
           <div className="model-list">{importedModels.map(model => renderModel(model, true))}</div>
         </section>
+      )}
+
+      {pendingDownload && pendingLegal && (
+        <div className="license-dialog-backdrop" role="presentation" onMouseDown={() => setPendingDownload(null)}>
+          <section
+            className="license-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="license-dialog-title"
+            onMouseDown={event => event.stopPropagation()}
+          >
+            <header>
+              <ShieldCheck size={22} />
+              <div>
+                <h3 id="license-dialog-title">Review model terms</h3>
+                <p>{pendingDownload.name}</p>
+              </div>
+            </header>
+            <dl>
+              <div><dt>Publisher</dt><dd>{pendingDownload.company || 'Independent publisher'}</dd></div>
+              <div><dt>License</dt><dd>{pendingLegal.license}</dd></div>
+              <div><dt>Download</dt><dd>{pendingDownload.size} from Hugging Face</dd></div>
+            </dl>
+            <div className="license-dialog__links">
+              <button type="button" onClick={() => openExternal(pendingLegal.sourceUrl)}>
+                Model source<ExternalLink size={13} />
+              </button>
+              <button type="button" onClick={() => openExternal(pendingLegal.licenseUrl)}>
+                License terms<ExternalLink size={13} />
+              </button>
+            </div>
+            <p className="license-dialog__notice">
+              The model is supplied by its independent publisher. Continue only if you accept the current upstream terms and usage restrictions.
+            </p>
+            <footer>
+              <button type="button" className="btn-secondary" onClick={() => setPendingDownload(null)}>Cancel</button>
+              <button type="button" className="btn-accent" onClick={confirmDownload}>Accept and download</button>
+            </footer>
+          </section>
+        </div>
       )}
     </main>
   );

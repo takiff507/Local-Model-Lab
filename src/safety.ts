@@ -19,6 +19,7 @@ const EXPLICIT_PATTERNS = [
   /\bporn(?:ography|ographic)?\b/i,
   /\bxxx\b/i,
   /\bexplicit\b/i,
+  /\bsex\b/i,
   /\bsexual(?:ly)?\b/i,
   /\berotic\b/i,
   /\bfetish\b/i,
@@ -41,7 +42,7 @@ function matchesAny(text: string, patterns: RegExp[]) {
   return patterns.some(pattern => pattern.test(text));
 }
 
-export function checkPromptSafety(text: string, safetyEnabled: boolean): SafetyResult {
+export function checkPromptSafety(text: string): SafetyResult {
   const normalized = text.normalize('NFKC').replace(/\s+/g, ' ').trim();
 
   if (matchesAny(normalized, EXPLOITATION_PATTERNS)) {
@@ -58,10 +59,10 @@ export function checkPromptSafety(text: string, safetyEnabled: boolean): SafetyR
     };
   }
 
-  if (safetyEnabled && matchesAny(normalized, EXPLICIT_PATTERNS)) {
+  if (matchesAny(normalized, EXPLICIT_PATTERNS)) {
     return {
       allowed: false,
-      reason: '18+ safety is on. It can be disabled only for lawful, consensual, adult-only local workflows.',
+      reason: 'Safety Lock blocks sexually explicit prompts in this Store release.',
     };
   }
 
@@ -70,6 +71,6 @@ export function checkPromptSafety(text: string, safetyEnabled: boolean): SafetyR
 
 export const SAFETY_SYSTEM_PROMPT = [
   'Follow the user request when it is lawful and safe.',
-  'Refuse sexual content involving minors, non-consensual sexual content, exploitation, and instructions that facilitate serious harm or illegal access.',
+  'Refuse sexually explicit content, sexual content involving minors, non-consensual sexual content, exploitation, and instructions that facilitate serious harm or illegal access.',
   'For requests about safety, prevention, recovery, or reporting, provide supportive high-level information without graphic detail.',
 ].join(' ');

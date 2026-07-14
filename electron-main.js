@@ -4,7 +4,7 @@ import * as fs from 'fs';
 import { exec, execFile, execSync } from 'child_process';
 import * as os from 'os';
 import axios from 'axios';
-import { fileURLToPath, pathToFileURL } from 'url';
+import { fileURLToPath } from 'url';
 import { pipeline } from 'stream/promises';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -32,9 +32,19 @@ function isModelFile(filename) {
     return MODEL_EXTENSIONS.some(ext => filename.toLowerCase().endsWith(ext));
 }
 const TRUSTED_MODEL_HOSTS = new Set(['huggingface.co']);
+const TRUSTED_BACKEND_HOSTS = new Set([
+    'github.com',
+    'objects.githubusercontent.com',
+    'release-assets.githubusercontent.com',
+    'github-releases.githubusercontent.com',
+]);
+const MAX_BACKEND_DOWNLOAD_BYTES = 750 * 1024 * 1024;
 function isTrustedDownloadHost(hostname) {
     const normalized = hostname.toLowerCase();
     return TRUSTED_MODEL_HOSTS.has(normalized) || normalized.endsWith('.hf.co');
+}
+function isTrustedBackendHost(hostname) {
+    return TRUSTED_BACKEND_HOSTS.has(hostname.toLowerCase());
 }
 function validateModelDownloadInput(payload) {
     const modelId = String(payload?.modelId || '');
@@ -106,11 +116,17 @@ function createWindow() {
             preload: path.join(__dirname, 'preload.cjs'),
             nodeIntegration: false,
             contextIsolation: true,
-            sandbox: false,
+            sandbox: true,
         },
     });
+    const devServerUrl = process.argv.includes('--dev')
+        ? 'http://127.0.0.1:5173'
+        : process.env.VITE_DEV_SERVER_URL;
     const distPath = path.join(__dirname, 'dist', 'index.html');
-    if (fs.existsSync(distPath)) {
+    if (devServerUrl) {
+        mainWindow.loadURL(devServerUrl);
+    }
+    else if (fs.existsSync(distPath)) {
         mainWindow.loadFile(distPath);
     }
     else {
@@ -200,9 +216,15 @@ function detectWindowsGpus() {
         const names = [];
         let maxMemoryGB = 0;
         for (const row of rows) {
-            const name = row?.Name || row?.['HardwareInformation.AdapterString'];
+            const rawName = row?.Name || row?.['HardwareInformation.AdapterString'];
+            const registryBytes = rawName?.value;
+            const name = typeof rawName === 'string'
+                ? rawName.trim()
+                : Array.isArray(registryBytes)
+                    ? Buffer.from(registryBytes).toString('utf16le').replaceAll('\u0000', '').trim()
+                    : '';
             if (name)
-                names.push(String(name));
+                names.push(name);
             const adapterRam = Number(row?.AdapterRAM || 0);
             if (adapterRam > 0) {
                 maxMemoryGB = Math.max(maxMemoryGB, Math.round(adapterRam / (1024 * 1024 * 1024)));
@@ -532,8 +554,25 @@ ipcMain.handle('download-image-backend', async (event, { backendType }) => {
             url,
             responseType: 'stream',
             cancelToken: cancelTokenSource.token,
+            timeout: 30_000,
+            maxRedirects: 5,
+            beforeRedirect: options => {
+                if (options.protocol !== 'https:' || !options.hostname || !isTrustedBackendHost(options.hostname)) {
+                    throw new Error(`Blocked untrusted backend download redirect: ${options.hostname || 'unknown host'}`);
+                }
+            },
         });
+        const finalUrl = String(response.request?.res?.responseUrl || url);
+        const finalDownloadUrl = new URL(finalUrl);
+        if (finalDownloadUrl.protocol !== 'https:' || !isTrustedBackendHost(finalDownloadUrl.hostname)) {
+            response.data.destroy();
+            throw new Error(`Blocked untrusted backend download host: ${finalDownloadUrl.hostname}`);
+        }
         const totalBytes = parseInt(String(response.headers['content-length'] || '0'), 10);
+        if (totalBytes > MAX_BACKEND_DOWNLOAD_BYTES) {
+            response.data.destroy();
+            throw new Error('Backend package is larger than the allowed download limit.');
+        }
         let downloadedBytes = 0;
         let lastTime = Date.now();
         let lastDownloaded = 0;
@@ -562,6 +601,21 @@ ipcMain.handle('download-image-backend', async (event, { backendType }) => {
             writer.on('finish', resolve);
             writer.on('error', (err) => reject(err));
         });
+        const finalBytes = fs.statSync(zipPath).size;
+        if (finalBytes < 1024 * 1024 || finalBytes > MAX_BACKEND_DOWNLOAD_BYTES) {
+            throw new Error('Backend package failed the size integrity check.');
+        }
+        const zipSignature = Buffer.alloc(4);
+        const zipHandle = fs.openSync(zipPath, 'r');
+        try {
+            fs.readSync(zipHandle, zipSignature, 0, zipSignature.length, 0);
+        }
+        finally {
+            fs.closeSync(zipHandle);
+        }
+        if (zipSignature[0] !== 0x50 || zipSignature[1] !== 0x4b) {
+            throw new Error('Backend download is not a valid ZIP package.');
+        }
         activeBackendDownload = null;
         // 2. Unzip using PowerShell
         event.sender.send('image-backend-download-progress', { status: 'extracting', progress: 99 });
@@ -722,6 +776,10 @@ ipcMain.handle('chat-completion', async (_event, { messages, temperature = 0.7, 
     }
     try {
         const lastUserMessage = messages[messages.length - 1]?.content || '';
+        const promptSafetyReason = localSafetyCheck(String(lastUserMessage));
+        if (promptSafetyReason) {
+            return { success: false, error: promptSafetyReason };
+        }
         sendEngineLog(`[inference] Processing prompt (${lastUserMessage.length} chars)...`, 'text');
         const response = await activeSession.prompt(lastUserMessage, {
             maxTokens,
@@ -729,6 +787,11 @@ ipcMain.handle('chat-completion', async (_event, { messages, temperature = 0.7, 
             topP,
             repeatPenalty: { penalty: repPenalty },
         });
+        const responseSafetyReason = localSafetyCheck(String(response));
+        if (responseSafetyReason) {
+            sendEngineLog('[safety] A generated response was blocked before display.', 'text');
+            return { success: false, error: 'Safety Lock blocked the generated response in this Store release.' };
+        }
         sendEngineLog(`[inference] Response generated (${response.length} chars).`, 'text');
         return { success: true, content: response };
     }
@@ -737,7 +800,7 @@ ipcMain.handle('chat-completion', async (_event, { messages, temperature = 0.7, 
         return { success: false, error: error.message };
     }
 });
-function localSafetyCheck(prompt, safetyEnabled) {
+function localSafetyCheck(prompt) {
     const normalized = ` ${prompt.toLowerCase().replace(/[^a-z0-9]+/g, ' ')} `;
     const hardBlocks = [' child porn ', ' rape ', ' sexual assault ', ' non consensual ', ' nonconsensual ', ' bestiality '];
     const explicit = [' nude ', ' nudity ', ' porn ', ' xxx ', ' explicit ', ' sex ', ' sexual ', ' erotic ', ' fetish ', ' genitals ', ' nsfw '];
@@ -746,12 +809,30 @@ function localSafetyCheck(prompt, safetyEnabled) {
     const hasExplicit = explicit.some(term => normalized.includes(term));
     const hasMinor = minor.some(term => normalized.includes(term));
     if (hasHardBlock || (hasExplicit && hasMinor)) {
-        return 'Blocked by local 18+ safety rules.';
+        return 'Blocked by Safety Lock because the request appears exploitative or prohibited.';
     }
-    if (safetyEnabled && hasExplicit) {
-        return '18+ safety is ON. Disable it only for lawful adult-only local workflows.';
+    if (hasExplicit) {
+        return 'Safety Lock blocks sexually explicit prompts in this Store release.';
     }
     return '';
+}
+const STORE_SAFETY_NEGATIVE_PROMPT = [
+    'nsfw',
+    'nude',
+    'nudity',
+    'pornographic',
+    'sexually explicit',
+    'fetish',
+    'genitals',
+    'nipples',
+    'graphic violence',
+    'gore',
+].join(', ');
+function withStoreSafetyNegativePrompt(negativePrompt) {
+    const userNegative = String(negativePrompt || '').trim();
+    return userNegative
+        ? `${userNegative}, ${STORE_SAFETY_NEGATIVE_PROMPT}`
+        : STORE_SAFETY_NEGATIVE_PROMPT;
 }
 function getBinSearchPaths() {
     const paths = [
@@ -806,9 +887,9 @@ ipcMain.handle('get-image-backend-status', async () => {
     if (cliPath) {
         return {
             available: true,
-            backend: 'Local Engine',
-            label: 'Local GPU Engine Ready',
-            detail: 'Using local graphics hardware acceleration.',
+            backend: 'stable-diffusion.cpp',
+            label: 'Local Engine Ready',
+            detail: 'Using stable-diffusion.cpp installed on this PC.',
         };
     }
     if (await detectAutomatic1111()) {
@@ -854,7 +935,7 @@ function mapSdCppSampler(scheduler) {
     };
     return samplers[scheduler] || 'euler_a';
 }
-function runStableDiffusionCli(exePath, args, cwd, env) {
+function runStableDiffusionCli(exePath, args, cwd, expectedSteps, env) {
     return new Promise((resolve, reject) => {
         const child = execFile(exePath, args, { cwd, env, windowsHide: true, maxBuffer: 1024 * 1024 * 20 }, (error) => {
             if (error)
@@ -871,8 +952,8 @@ function runStableDiffusionCli(exePath, args, cwd, env) {
                 if (match) {
                     const current = parseInt(match[1], 10);
                     const total = parseInt(match[2], 10);
-                    if (total > 0 && current <= total) {
-                        const percent = Math.round((current / total) * 100);
+                    if (total === expectedSteps && current <= total) {
+                        const percent = Math.min(99, Math.round((current / total) * 100));
                         sendImageProgress(percent, `Generating: Step ${current}/${total}`);
                     }
                 }
@@ -925,7 +1006,7 @@ async function generateWithStableDiffusionCpp(payload, modelPath, outputPath) {
     }
     sendImageProgress(5, 'Preparing local generation engine...');
     sendEngineLog(`[image] Local Engine active: ${path.basename(exePath)}`, 'image');
-    await runStableDiffusionCli(exePath, args, path.dirname(exePath), env);
+    await runStableDiffusionCli(exePath, args, path.dirname(exePath), Number(payload.steps), env);
 }
 async function generateWithAutomatic1111(payload, outputPath) {
     sendImageProgress(18, 'Sending job to local A1111/Forge backend...');
@@ -950,7 +1031,7 @@ async function generateWithAutomatic1111(payload, outputPath) {
 }
 ipcMain.handle('start-image-generation', async (_event, payload) => {
     try {
-        const safetyReason = localSafetyCheck(`${payload.prompt} ${payload.negativePrompt || ''}`, Boolean(payload.safetyEnabled));
+        const safetyReason = localSafetyCheck(String(payload.prompt || ''));
         if (safetyReason) {
             return { success: false, error: safetyReason };
         }
@@ -961,7 +1042,11 @@ ipcMain.handle('start-image-generation', async (_event, payload) => {
         ensureDir(getImageOutputFolder());
         const seed = payload.seed === -1 ? Math.floor(Math.random() * 999999999) : payload.seed;
         const outputPath = path.join(getImageOutputFolder(), `lml_${Date.now()}_${seed}.png`);
-        const jobPayload = { ...payload, seed };
+        const jobPayload = {
+            ...payload,
+            seed,
+            negativePrompt: withStoreSafetyNegativePrompt(payload.negativePrompt),
+        };
         sendImageProgress(6, 'Preparing local image job...');
         sendEngineLog(`[image] Prompt accepted. Model: ${path.basename(modelPath)}`, 'image');
         const cliPath = findStableDiffusionCli();
@@ -984,9 +1069,9 @@ ipcMain.handle('start-image-generation', async (_event, payload) => {
         sendEngineLog(`[image] Output saved: ${outputPath}`, 'image');
         return {
             success: true,
-            imageUrl: pathToFileURL(outputPath).href,
+            imageUrl: `data:image/png;base64,${fs.readFileSync(outputPath).toString('base64')}`,
             outputPath,
-            backend: cliPath ? 'Local Engine' : 'WebUI Backend',
+            backend: cliPath ? 'stable-diffusion.cpp' : 'automatic1111',
         };
     }
     catch (error) {
@@ -999,18 +1084,26 @@ function getGPUUsage() {
     return new Promise((resolve) => {
         exec('nvidia-smi --query-gpu=utilization.gpu --format=csv,noheader,nounits', { windowsHide: true }, (err, stdout) => {
             if (!err && stdout) {
-                const val = parseInt(stdout.trim());
+                const val = parseInt(stdout.trim(), 10);
                 if (!Number.isNaN(val))
-                    return resolve(val);
+                    return resolve(Math.max(0, Math.min(100, val)));
             }
-            exec('powershell -NoProfile -Command "(Get-Counter -Counter \\\"\\GPU Engine(*)\\Utilization Percentage\\\").CounterSamples | Measure-Object -Property CookedValue -Sum | Select-Object -ExpandProperty Sum"', { windowsHide: true }, (err2, stdout2) => {
+            const script = [
+                "$samples = (Get-Counter '\\GPU Engine(*)\\Utilization Percentage' -ErrorAction Stop).CounterSamples",
+                "$groups = $samples | Where-Object { $_.CookedValue -ge 0 } | Group-Object {",
+                "  if ($_.InstanceName -match 'luid_(.+?)_phys_(\\d+)_eng_\\d+_engtype_(.+)$') {",
+                "    \"$($matches[1])|$($matches[2])|$($matches[3])\"",
+                "  } else { $_.InstanceName }",
+                "}",
+                "$maximum = ($groups | ForEach-Object { ($_.Group | Measure-Object -Property CookedValue -Sum).Sum } | Measure-Object -Maximum).Maximum",
+                "if ($null -eq $maximum) { exit 1 }",
+                "[math]::Round([math]::Min(100, [math]::Max(0, $maximum)))",
+            ].join('; ');
+            execFile('powershell', ['-NoProfile', '-NonInteractive', '-Command', script], { windowsHide: true, timeout: 5000 }, (err2, stdout2) => {
                 if (!err2 && stdout2) {
-                    let val = Math.round(parseFloat(stdout2.trim()) / 100);
-                    if (!Number.isNaN(val)) {
-                        if (val > 100)
-                            val = 100;
-                        return resolve(val);
-                    }
+                    const val = Math.round(parseFloat(stdout2.trim()));
+                    if (!Number.isNaN(val))
+                        return resolve(Math.max(0, Math.min(100, val)));
                 }
                 resolve(Number.NaN);
             });

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Sliders, RefreshCw, FolderOpen, Trash2, Image as ImageIcon, Play, Sparkles, Layers, Cpu, ShieldCheck, ShieldOff, RotateCw, AlertTriangle, ChevronDown, ChevronUp } from 'lucide-react';
+import { Sliders, RefreshCw, FolderOpen, Trash2, Image as ImageIcon, Play, Sparkles, Layers, Cpu, ShieldCheck, RotateCw, AlertTriangle, ChevronDown, ChevronUp } from 'lucide-react';
 import { getImageBackendStatus, onImageGenerationProgress, startImageGeneration, downloadImageBackend, cancelImageBackendDownload, onImageBackendDownloadProgress, getSystemInfo, openGenerationsFolder } from '../ipc';
 import type { ImageBackendStatus } from '../ipc';
 import { buildInstalledModelCatalog } from '../modelsData';
@@ -25,8 +25,6 @@ interface GenerateTabProps {
   localModelFiles: string[];
   activeModelId: string;
   setActiveModelId: (id: string) => void;
-  safetyEnabled: boolean;
-  setSafetyEnabled: (enabled: boolean) => void;
 }
 
 const cleanErrorMessage = (err: string): string => {
@@ -46,13 +44,13 @@ const cleanErrorMessage = (err: string): string => {
   return err;
 };
 
+const LATENT_TILES = Array.from({ length: 64 }, (_, index) => index);
+
 export default function GenerateTab({
   downloadedModels,
   localModelFiles,
   activeModelId,
   setActiveModelId,
-  safetyEnabled,
-  setSafetyEnabled,
 }: GenerateTabProps) {
   const [prompt, setPrompt] = useState('A cinematic neon city street at night, detailed reflections, dramatic lighting, ultra sharp');
   const [negativePrompt, setNegativePrompt] = useState('ugly, blurry, low resolution, disfigured, text, watermark');
@@ -157,8 +155,11 @@ export default function GenerateTab({
   );
 
   const activeModel = availableImageModels.find(model => model.id === activeModelId);
-  const safety = checkPromptSafety(`${prompt} ${negativePrompt}`, safetyEnabled);
+  const isLocalEngine = backendStatus.backend === 'stable-diffusion.cpp';
+  const isAutomatic1111 = backendStatus.backend === 'automatic1111';
+  const safety = checkPromptSafety(prompt);
   const canGenerate = Boolean(activeModel) && backendStatus.available && safety.allowed && !isGenerating;
+  const displayProgress = isGenerating ? Math.min(progress, 99) : progress;
 
   const refreshBackend = useCallback(async () => {
     const status = await getImageBackendStatus();
@@ -184,10 +185,7 @@ export default function GenerateTab({
       setSteps(8);
       setCfg(1.5);
       setScheduler('euler_a');
-    } else if (activeModelId === 'sd-1.5-dreamshaper') {
-      setSteps(25);
-      setCfg(7.5);
-      setScheduler('dpmpp_2m_karras');
+
     } else {
       setSteps(25);
       setCfg(7.5);
@@ -230,7 +228,7 @@ export default function GenerateTab({
   const handleGenerate = async () => {
     if (!activeModel || isGenerating) return;
 
-    const safetyCheck = checkPromptSafety(`${prompt} ${negativePrompt}`, safetyEnabled);
+    const safetyCheck = checkPromptSafety(prompt);
     if (!safetyCheck.allowed) {
       setErrorMessage(safetyCheck.reason || 'Prompt blocked by local safety rules.');
       return;
@@ -260,12 +258,11 @@ export default function GenerateTab({
         seed: finalSeed,
         scheduler,
         clipSkip,
-        safetyEnabled,
-        gpuEnabled,
-        selectedGpuIndex,
-        limitCpuThreads,
-        cpuThreads,
-        vaeTiling,
+        gpuEnabled: isLocalEngine ? gpuEnabled : undefined,
+        selectedGpuIndex: isLocalEngine ? selectedGpuIndex : undefined,
+        limitCpuThreads: isLocalEngine ? limitCpuThreads : undefined,
+        cpuThreads: isLocalEngine ? cpuThreads : undefined,
+        vaeTiling: isLocalEngine ? vaeTiling : undefined,
       });
 
       if (!result.success || !result.imageUrl) {
@@ -360,12 +357,12 @@ export default function GenerateTab({
         }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
             <span style={{ fontSize: '0.75rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
-              {safetyEnabled ? <ShieldCheck size={13} /> : <ShieldOff size={13} />}
-              18+ Safety
+              <ShieldCheck size={13} />
+              Safety Lock
             </span>
-            <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Local prompt guard</span>
+            <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Blocks explicit and prohibited prompts</span>
           </div>
-          <input type="checkbox" checked={safetyEnabled} onChange={(e) => setSafetyEnabled(e.target.checked)} />
+          <span style={{ fontSize: '0.65rem', color: '#27c93f', fontWeight: 700 }}>Enabled</span>
         </div>
 
         <div style={{ position: 'relative', zIndex: 10 }}>
@@ -449,13 +446,15 @@ export default function GenerateTab({
           <input type="range" min="1.0" max="15.0" step="0.5" value={cfg} onChange={(e) => setCfg(parseFloat(e.target.value))} style={{ width: '100%' }} />
         </div>
 
-        <div style={{ position: 'relative', zIndex: 2 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '8px' }}>
-            <span>Clip Skip (A1111 / Forge)</span>
-            <span>{clipSkip}</span>
+        {isAutomatic1111 && (
+          <div style={{ position: 'relative', zIndex: 2 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '8px' }}>
+              <span>Clip Skip (A1111 / Forge)</span>
+              <span>{clipSkip}</span>
+            </div>
+            <input type="range" min="1" max="4" step="1" value={clipSkip} onChange={(e) => setClipSkip(parseInt(e.target.value))} style={{ width: '100%' }} />
           </div>
-          <input type="range" min="1" max="4" step="1" value={clipSkip} onChange={(e) => setClipSkip(parseInt(e.target.value))} style={{ width: '100%' }} />
-        </div>
+        )}
 
         <div style={{ position: 'relative', zIndex: 1 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '8px', alignItems: 'center' }}>
@@ -468,6 +467,8 @@ export default function GenerateTab({
           <input type="text" value={seed} onChange={(e) => setSeed(parseInt(e.target.value) || 0)} style={{ width: '100%', fontSize: '0.8rem', textAlign: 'center' }} />
         </div>
 
+        {isLocalEngine && (
+          <>
         {/* Accordion header */}
         <div style={{ borderTop: '1px solid var(--border-light)', paddingTop: '20px', marginTop: '10px' }}>
           <button 
@@ -581,6 +582,20 @@ export default function GenerateTab({
             </div>
           </div>
         )}
+          </>
+        )}
+
+        {isAutomatic1111 && (
+          <div style={{
+            borderTop: '1px solid var(--border-light)',
+            paddingTop: '16px',
+            color: 'var(--text-muted)',
+            fontSize: '0.68rem',
+            lineHeight: '1.5',
+          }}>
+            A1111/Forge manages GPU, CPU, and VRAM options in its own WebUI. Local Model Lab sends the visible prompt and generation settings through its local API.
+          </div>
+        )}
       </div>
 
       <div style={{
@@ -601,26 +616,56 @@ export default function GenerateTab({
         }}>
           {isGenerating ? (
             <div className="generation-visual" aria-live="polite">
-              <div className="generation-stage">
-                <div className="generation-blur generation-blur--one" />
-                <div className="generation-blur generation-blur--two" />
-                <div className="generation-blur generation-blur--three" />
-                <div className="generation-noise" />
-                <div className="generation-reveal" />
-                <div className="generation-focus"><Sparkles size={22} /><span>Rendering locally</span></div>
+              <div className="generation-stage-shell">
+                <div className="generation-stage" style={{ aspectRatio: aspect.replace(':', ' / ') }}>
+                  <div className="generation-latent-grid" aria-hidden="true">
+                    {LATENT_TILES.map(tile => (
+                      <span key={tile} style={{ animationDelay: `${-(tile % 16) * 0.13}s` }} />
+                    ))}
+                  </div>
+                  <div className="generation-tone" aria-hidden="true" />
+                  <div
+                    className="generation-fog"
+                    aria-hidden="true"
+                    style={{ left: `${Math.max(8, displayProgress)}%` }}
+                  />
+                  <div
+                    className="generation-scan"
+                    aria-hidden="true"
+                    style={{ left: `${Math.max(8, displayProgress)}%` }}
+                  />
+                  <div className="generation-grain" aria-hidden="true" />
+                  <div className="generation-stage-topline">
+                    <span><Sparkles size={14} />Local diffusion</span>
+                    <span>{width} x {height}</span>
+                  </div>
+                  <div className="generation-resolving-mark">
+                    <Sparkles size={18} />
+                    <span>Resolving details</span>
+                  </div>
+                  <div className="generation-stage-percent">
+                    {displayProgress}<small>%</small>
+                  </div>
+                </div>
               </div>
               <div className="generation-status">
                 <div className="generation-status__line">
                   <span className="generation-live-dot" />
-                  <strong>Creating on your device</strong>
-                  <span>{progress}%</span>
+                  <strong>
+                    {displayProgress < 18
+                      ? 'Preparing composition'
+                      : displayProgress < 72
+                        ? 'Developing the image'
+                        : 'Refining details'}
+                  </strong>
+                  <span>{displayProgress}%</span>
                 </div>
                 <div className="generation-progress-track">
-                  <span style={{ width: `${progress}%` }} />
+                  <span style={{ width: `${displayProgress}%` }} />
                 </div>
                 <p>{progressText || 'Turning your prompt into pixels...'}</p>
                 <div className="generation-metrics">
-                  <span>LOCAL ENGINE</span>
+                  <span>ON-DEVICE</span>
                   <span>{width} x {height}</span>
                   <span>SEED {seed === -1 ? 'RANDOM' : seed}</span>
                 </div>

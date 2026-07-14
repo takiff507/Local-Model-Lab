@@ -1,5 +1,5 @@
 import { useMemo, useState, useRef, useEffect } from 'react';
-import { Send, Bot, User, Sliders, Trash2, Cpu, ShieldCheck, ShieldOff, FileDown } from 'lucide-react';
+import { Send, Bot, User, Sliders, Trash2, Cpu, ShieldCheck, FileDown } from 'lucide-react';
 import { startTextEngine, stopTextEngine, chatCompletion, exportChat } from '../ipc';
 import { buildInstalledModelCatalog } from '../modelsData';
 import { checkPromptSafety, SAFETY_SYSTEM_PROMPT } from '../safety';
@@ -16,8 +16,6 @@ interface ChatTabProps {
   localModelFiles: string[];
   activeModelId: string;
   setActiveModelId: (id: string) => void;
-  safetyEnabled: boolean;
-  setSafetyEnabled: (enabled: boolean) => void;
 }
 
 export default function ChatTab({
@@ -25,8 +23,6 @@ export default function ChatTab({
   localModelFiles,
   activeModelId,
   setActiveModelId,
-  safetyEnabled,
-  setSafetyEnabled,
 }: ChatTabProps) {
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -72,9 +68,7 @@ export default function ChatTab({
     };
   }, [engineStatus]);
 
-  const effectiveSystemPrompt = safetyEnabled
-    ? `${systemPrompt}\n\n${SAFETY_SYSTEM_PROMPT}`
-    : systemPrompt;
+  const effectiveSystemPrompt = `${systemPrompt}\n\n${SAFETY_SYSTEM_PROMPT}`;
 
   const launchModel = async (modelId: string) => {
     const modelMeta = availableTextModels.find(model => model.id === modelId);
@@ -96,7 +90,7 @@ export default function ChatTab({
     e.preventDefault();
     if (!inputText.trim() || isGenerating) return;
 
-    const safety = checkPromptSafety(inputText, safetyEnabled);
+    const safety = checkPromptSafety(inputText);
     if (!safety.allowed) {
       setMessages(prev => [...prev, {
         sender: 'ai',
@@ -481,14 +475,14 @@ export default function ChatTab({
         }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
             <span style={{ fontSize: '0.8rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
-              {safetyEnabled ? <ShieldCheck size={14} /> : <ShieldOff size={14} />}
-              18+ Safety
+              <ShieldCheck size={14} />
+              Safety Lock
             </span>
             <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>
-              Local prompt guard
+              Blocks explicit and prohibited prompts
             </span>
           </div>
-          <input type="checkbox" checked={safetyEnabled} onChange={(e) => setSafetyEnabled(e.target.checked)} />
+          <span style={{ fontSize: '0.68rem', color: '#27c93f', fontWeight: 700 }}>Enabled</span>
         </div>
 
         <div style={{
@@ -508,7 +502,7 @@ export default function ChatTab({
             <span>Local Processing</span>
           </div>
           <p style={{ lineHeight: '1.4' }}>
-            Your chats are processed locally on your hardware. No data ever leaves your device.
+            Chat prompts are processed by the selected local model. Network access is used only when you choose downloads or external source links.
           </p>
         </div>
       </div>

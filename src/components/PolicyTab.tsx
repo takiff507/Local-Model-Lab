@@ -25,7 +25,7 @@ export default function PolicyTab() {
             <p>How Local Model Lab handles local data, responsible use, third-party models, and software licenses.</p>
           </div>
         </div>
-        <span className="policy-date">Effective July 9, 2026</span>
+        <span className="policy-date">Effective July 14, 2026</span>
       </header>
 
       <div className="policy-layout">
@@ -50,7 +50,7 @@ export default function PolicyTab() {
               <h2>Network activity</h2>
               <p>The app connects to Hugging Face when you verify or download a model and to GitHub when you install the optional stable-diffusion.cpp backend. Those services receive normal request information such as your IP address and user agent under their own privacy terms. Local A1111, Forge, and ComfyUI connections use loopback addresses only.</p>
               <h2>Files and settings</h2>
-              <p>Models, partial downloads, generations, and app settings are stored under your operating system user-data directories. Safety preferences are stored locally. You can remove model files from Model Library, remove generated images from their output folder, or uninstall the app and delete its user-data folder.</p>
+              <p>Models, partial downloads, generations, and app settings are stored under your operating system user-data directories. The Store release keeps Safety Lock enabled. You can remove model files from Model Library, remove generated images from their output folder, or uninstall the app and delete its user-data folder.</p>
               <h2>Permissions and security</h2>
               <p>The desktop renderer uses an allowlisted IPC bridge. Model downloads are limited to HTTPS Hugging Face sources and are checked for response type and expected size. No local application can guarantee protection from a compromised operating system, malicious model file, or software you install separately.</p>
               <h2>Children</h2>
@@ -65,7 +65,7 @@ export default function PolicyTab() {
               <h1>Terms of Use</h1>
               <p className="policy-lead">By using Local Model Lab, you agree to use the software lawfully and to review the terms attached to every third-party model you download.</p>
               <h2>Local software</h2>
-              <p>Local Model Lab provides a local interface and runtime for compatible AI models. The app does not promise that model output is accurate, complete, unbiased, or suitable for professional decisions. Verify important output independently.</p>
+              <p>Local Model Lab uses live generative AI to create text and images from user prompts on the user's device. The app does not promise that model output is accurate, complete, unbiased, or suitable for professional decisions. Verify important output independently.</p>
               <h2>Your responsibilities</h2>
               <p>You are responsible for prompts, imported files, generated output, distribution, and compliance with applicable law. You must have the rights needed for source images, models, datasets, and other material you use.</p>
               <h2>Third-party models and services</h2>
@@ -94,10 +94,10 @@ export default function PolicyTab() {
               </ul>
               <h2>High-impact decisions</h2>
               <p>Do not use unverified model output as the sole basis for medical, legal, financial, employment, housing, education, insurance, credit, or law-enforcement decisions.</p>
-              <h2>Adult content control</h2>
-              <p>The optional 18+ safety switch blocks common explicit prompts. It can be disabled for lawful adult-only workflows, but hard blocks for sexual content involving minors and non-consensual sexual content remain. Model-specific licenses may impose stricter rules.</p>
+              <h2>Safety Lock</h2>
+              <p>The Store release keeps its local Safety Lock enabled and blocks common explicit prompts, sexual content involving minors, non-consensual sexual content, and exploitation. The guard is pattern-based, can miss harmful requests, and does not replace output review or model-specific license rules.</p>
               <h2>Reporting</h2>
-              <p>Security, licensing, and catalog concerns should be reported through the official GitHub repository. Do not include private prompts, personal data, or sensitive local file paths in a public issue.</p>
+              <p>Use Report unsafe output in Settings for offensive generated content. Security, licensing, and catalog concerns can use the same official GitHub issue tracker. Do not include private prompts, generated content, personal data, or sensitive local file paths in a public issue.</p>
             </>
           )}
 

@@ -6,6 +6,7 @@ import GenerateTab from './components/GenerateTab';
 import ModelStoreTab from './components/ModelStoreTab';
 import SettingsTab from './components/SettingsTab';
 import PolicyTab from './components/PolicyTab';
+import StartupSplash from './components/StartupSplash';
 import { getSystemInfo, getDownloadedModels, verifyModelDownload, downloadModel, cancelDownload, onDownloadProgress, importLocalModels, getImageBackendStatus, downloadImageBackend, cancelImageBackendDownload, onImageBackendDownloadProgress } from './ipc';
 import { RECOMMENDED_MODELS } from './modelsData';
 import type { HardwareProfile } from './modelsData';
@@ -20,13 +21,15 @@ interface DownloadState {
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<string>('chat');
+  const [startupComplete, setStartupComplete] = useState(false);
   const [systemInfo, setSystemInfo] = useState<HardwareProfile & { modelsPath?: string } | null>(null);
   const [downloadedModels, setDownloadedModels] = useState<string[]>([]);
   const [localModelFiles, setLocalModelFiles] = useState<string[]>([]);
   const [activeTextModelId, setActiveTextModelId] = useState<string>('');
   const [activeImageModelId, setActiveImageModelId] = useState<string>('');
   const [downloadStates, setDownloadStates] = useState<{ [key: string]: DownloadState }>({});
-  const [safetyEnabled, setSafetyEnabled] = useState<boolean>(() => localStorage.getItem('lmlSafetyEnabled') !== 'false');
+
+  const completeStartup = useCallback(() => setStartupComplete(true), []);
 
   const refreshLocalModels = useCallback(async () => {
     const filenames = await getDownloadedModels();
@@ -39,10 +42,6 @@ export default function App() {
 
     return downloadedIds;
   }, []);
-
-  useEffect(() => {
-    localStorage.setItem('lmlSafetyEnabled', String(safetyEnabled));
-  }, [safetyEnabled]);
 
   useEffect(() => {
     async function loadSpecsAndModels() {
@@ -210,7 +209,9 @@ export default function App() {
   };
 
   return (
-    <div style={{
+    <>
+      {!startupComplete && <StartupSplash onComplete={completeStartup} />}
+      <div style={{
       display: 'flex',
       flexDirection: 'column',
       height: '100vh',
@@ -241,8 +242,6 @@ export default function App() {
               localModelFiles={localModelFiles}
               activeModelId={activeTextModelId}
               setActiveModelId={setActiveTextModelId}
-              safetyEnabled={safetyEnabled}
-              setSafetyEnabled={setSafetyEnabled}
             />
           </div>
 
@@ -252,8 +251,6 @@ export default function App() {
               localModelFiles={localModelFiles}
               activeModelId={activeImageModelId}
               setActiveModelId={setActiveImageModelId}
-              safetyEnabled={safetyEnabled}
-              setSafetyEnabled={setSafetyEnabled}
             />
           </div>
 
@@ -272,17 +269,14 @@ export default function App() {
           </div>
 
           <div style={{ display: activeTab === 'settings' ? 'flex' : 'none', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
-            <SettingsTab
-              systemInfo={systemInfo}
-              safetyEnabled={safetyEnabled}
-              setSafetyEnabled={setSafetyEnabled}
-            />
+            <SettingsTab systemInfo={systemInfo} />
           </div>
           <div style={{ display: activeTab === 'policy' ? 'flex' : 'none', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
             <PolicyTab />
           </div>
         </div>
+        </div>
       </div>
-    </div>
+    </>
   );
 }

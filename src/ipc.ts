@@ -30,7 +30,6 @@ export interface ImageGenerationRequest {
   scheduler: string;
   clipSkip: number;
   vae?: string;
-  safetyEnabled: boolean;
   gpuEnabled?: boolean;
   selectedGpuIndex?: number;
   limitCpuThreads?: boolean;
@@ -96,14 +95,14 @@ export const getSystemInfo = async (): Promise<SystemInfo> => {
   }
 
   return {
-    cpu: 'AMD Ryzen 7 5800X 8-Core Processor',
-    cores: 8,
-    ram: '32 GB',
-    ramGB: 32,
-    gpu: 'NVIDIA GeForce RTX 4070 Ti SUPER',
-    gpuMemoryGB: 16,
-    platform: 'win32',
-    modelsPath: 'C:\\Users\\MockUser\\AppData\\Roaming\\LocalAI_Models',
+    cpu: 'Desktop app required',
+    cores: 0,
+    ram: 'Unknown',
+    ramGB: 0,
+    gpu: 'Unknown',
+    gpuMemoryGB: 0,
+    platform: 'browser-preview',
+    modelsPath: 'Available in the desktop app',
   };
 };
 
