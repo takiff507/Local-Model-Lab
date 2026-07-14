@@ -1,0 +1,82 @@
+name: Unsafe output report
+description: Report an offensive output, a safety-filter bypass, or an unsafe catalog entry.
+title: "[Safety Report] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This report is public. Describe the issue without pasting the prompt or output. Do not upload generated media, screenshots, logs, credentials, personal data, model files, or local file paths.
+
+  - type: dropdown
+    id: report-type
+    attributes:
+      label: Report type
+      options:
+        - Offensive generated output
+        - Safety-filter bypass
+        - Unsafe model catalog entry
+        - Other safety concern
+    validations:
+      required: true
+
+  - type: dropdown
+    id: feature
+    attributes:
+      label: Affected feature
+      options:
+        - Chat Assistant
+        - Image Creator
+        - Model Library
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Safe summary
+      description: Paraphrase what went wrong. Do not reproduce the prompt or generated content.
+      placeholder: The safety filter allowed a request in the Image Creator that should have been blocked.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Reproduction steps
+      description: List only non-sensitive steps. Replace any unsafe text with [removed].
+      placeholder: |
+        1. Opened Image Creator.
+        2. Entered [removed].
+        3. Safety Lock did not block the request.
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: App version
+      placeholder: 1.0.1
+    validations:
+      required: true
+
+  - type: dropdown
+    id: windows-version
+    attributes:
+      label: Windows version
+      options:
+        - Windows 11
+        - Windows 10
+        - Other
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: public-safety
+    attributes:
+      label: Public report confirmation
+      options:
+        - label: I removed prompts, outputs, media, logs, credentials, personal data, model files, and local paths.
+          required: true
+        - label: I understand this issue will be visible to the public.
+          required: true

@@ -1,0 +1,37 @@
+name: Safety report bot
+
+on:
+  issues:
+    types: [opened, reopened]
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  triage:
+    if: startsWith(github.event.issue.title, '[Safety Report]') || startsWith(github.event.issue.title, 'Safety report:')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create report labels when missing
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          gh label create "safety-report" --color "B60205" --description "User-reported safety concern" --force
+          gh label create "needs-triage" --color "FBCA04" --description "Awaiting maintainer review" --force
+
+      - name: Label the report
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+        run: gh issue edit "$ISSUE_NUMBER" --add-label "safety-report,needs-triage"
+
+      - name: Post a privacy-safe acknowledgement
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+        run: |
+          gh issue comment "$ISSUE_NUMBER" --body "Thanks for reporting this safety concern. The report has been queued for maintainer review. Because this issue is public, please remove any prompts, generated media, logs, credentials, personal data, model files, or local paths. The bot never requests or uploads content from your device."

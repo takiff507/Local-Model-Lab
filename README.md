@@ -26,7 +26,7 @@ Local Model Lab does not require an account and does not include advertising, an
 
 ## Download
 
-Official Windows releases are published from the Local Model Lab repository. Verify the provided SHA256 checksum before running a downloaded build.
+Get the Windows app from the [Microsoft Store publisher page](https://apps.microsoft.com/search/publisher?name=KSNXRL&hl=lb-LU&gl=LU). Source releases and checksums remain available from the Local Model Lab repository.
 
 ## Policies
 

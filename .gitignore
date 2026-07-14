@@ -12,6 +12,22 @@ dist
 dist-ssr
 *.local
 
+# Secrets and signing material
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.p12
+*.pfx
+
+# Local models and generated content
+*.ckpt
+*.gguf
+*.safetensors
+LocalAI_Models/
+LML_Generations/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
@@ -23,6 +39,8 @@ dist-ssr
 *.sln
 *.sw?
 # Generated application artifacts
-release/
-release-final/
-release-portable/
+/release/
+/release-*/
+*.appx
+*.msix
+*.msixbundle

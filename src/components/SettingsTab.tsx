@@ -11,7 +11,7 @@ interface SettingsTabProps {
   systemInfo: any;
 }
 
-const SAFETY_REPORT_URL = 'https://github.com/takiff507/Local-Model-Lab/issues/new?title=Safety%20report%3A%20offensive%20output';
+const SAFETY_REPORT_URL = 'https://github.com/takiff507/Local-Model-Lab/issues/new?template=unsafe-output.yml';
 
 export default function SettingsTab({ systemInfo }: SettingsTabProps) {
   const [logs, setLogs] = useState<string[]>([

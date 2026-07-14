@@ -6,7 +6,7 @@ Security fixes target the latest release and the current `main` branch.
 
 ## Reporting a vulnerability
 
-Report vulnerabilities privately through GitHub Security Advisories after the repository is published. Do not open a public issue for an unpatched vulnerability and do not include credentials, private prompts, personal data, model files, or sensitive local paths.
+Report vulnerabilities through [GitHub private vulnerability reporting](https://github.com/takiff507/Local-Model-Lab/security/advisories/new). Do not open a public issue for an unpatched vulnerability and do not include credentials, private prompts, personal data, model files, or sensitive local paths.
 
 Include:
 
